@@ -12,23 +12,31 @@ SoftwareSerial bluetoothSerial(2, 3); // RX, TX
 #define CHANGESPEED 5
 
 
-#define DEFAULTVOLTAGE 120
+#define DEFAULTVOLTAGE 150
+
 #define MINVOLTAGE 0
+
 #define MAXVOLTAGE 255
 
 #define LOWSPEED 0
 #define HIGHSPEED 1
 // declare motor driver module ctrl pin:
-int leftMotorPin1 = 4;
-int leftMotorPin2 = 5;
-int rightMotorPin1 = 6;
-int rightMotorPin2 = 7;
+int leftMotorPin1 = 16;
+int leftMotorPin2 = 17;
+int rightMotorPin1 = 18;
+int rightMotorPin2 = 19;
+
 int leftPWM = 9;
 int rightPWM = 10;
+
+int ultrasonicInputPin = 7;
+int ultrasonicOutputPin = 8;
+
 int motorAction = STOP;
 int motorVoltage = MINVOLTAGE;
-int motorSpeedLevel = LOWSPEED;
+int motorSpeedLevel = HIGHSPEED;
 
+int distance = 0;
 /*
   motor ctrl matrix
   1. stop
@@ -45,8 +53,8 @@ int ctrlMatrix[5][4] = {
   {LOW, HIGH, HIGH, LOW}
 };
 
-void motorRun(int cmd)
-{
+
+void motorRun(int cmd) {
   Serial.print("recv cmd: ");
   Serial.println(cmd);
   digitalWrite(leftMotorPin1, ctrlMatrix[cmd][0]);
@@ -55,12 +63,14 @@ void motorRun(int cmd)
   digitalWrite(rightMotorPin2, ctrlMatrix[cmd][3]);
 }
 
+
 void changeSpeed(int voltage) {
   Serial.print("recv voltage: ");
   Serial.println(voltage);
   analogWrite(leftPWM, voltage);
   analogWrite(rightPWM, voltage);
 }
+
 void changeSpeedLevel(int level) {
   Serial.print("recv voltage level: ");
   Serial.println(level);
@@ -94,34 +104,55 @@ void setup()
   pinMode(rightMotorPin2, OUTPUT);
   pinMode(leftPWM, OUTPUT);
   pinMode(rightPWM, OUTPUT);
+
+  pinMode(ultrasonicInputPin, INPUT);
+  pinMode(ultrasonicOutputPin, OUTPUT);
+  changeSpeedLevel(motorSpeedLevel);
   Serial.println("setup has been down.");
 }
+void motorCtrl(int cmd) {
+  if (cmd >= STOP && cmd <= TURNRIGHT) {
+    motorAction = cmd;
+    motorRun(motorAction);
+  } else if (cmd > DEFAULTVOLTAGE && cmd <= MAXVOLTAGE) {
+    motorVoltage = cmd;
+    changeSpeed(cmd);
+  } else if (cmd == CHANGESPEED) {
+    if (motorSpeedLevel == LOWSPEED) {
+      motorSpeedLevel = HIGHSPEED;
+    } else {
+      motorSpeedLevel = LOWSPEED;
+    }
+    changeSpeedLevel(motorSpeedLevel);
+  }
 
-void loop()
-{
-  if (bluetoothSerial.available()) {
+}
+
+int getDistance () {
+  digitalWrite(ultrasonicOutputPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(ultrasonicOutputPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(ultrasonicOutputPin, LOW);
+
+  int distance = pulseIn(ultrasonicInputPin, HIGH);
+  distance = distance / 58;
+  return distance;
+}
+void bluetooth() {
+  
+ if (bluetoothSerial.available()) {
     int bluetoothCmd = (int)bluetoothSerial.read();
     Serial.print("bluttooth Command: ");
     Serial.println(bluetoothCmd);
-    if (bluetoothCmd >= STOP && bluetoothCmd <= TURNLEFT) {
-      motorAction = bluetoothCmd;
-      motorRun(motorAction);
-    } else if (bluetoothCmd > DEFAULTVOLTAGE && bluetoothCmd <= MAXVOLTAGE) {
-      motorVoltage = bluetoothCmd;
-      changeSpeed(bluetoothCmd);
-    } else if (bluetoothCmd == CHANGESPEED) {
-      if (motorSpeedLevel == LOWSPEED) {
-        motorSpeedLevel = HIGHSPEED;
-      } else {
-        motorSpeedLevel = LOWSPEED;
-      }
-      changeSpeedLevel(motorSpeedLevel);
-    }
-
+    motorCtrl(bluetoothCmd);
   }
   if (Serial.available()) {
     Serial.print("Serial available: ");
     Serial.println(Serial.read());
     bluetoothSerial.write(Serial.read());
   }
+}
+void loop() {
+     bluetooth();
 }
