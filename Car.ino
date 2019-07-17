@@ -1,6 +1,12 @@
 #include <SoftwareSerial.h>
 
-SoftwareSerial bluetoothSerial(2, 3); // RX, TX
+//#include <TaskScheduler.h>
+
+#include <MsTimer2.h>
+
+SoftwareSerial bluetoothSerial(11, 12); // RX, TX
+
+// Scheduler runner;
 
 // define motor action,
 
@@ -54,6 +60,10 @@ int ctrlMatrix[5][4] = {
 };
 
 
+
+
+
+
 void motorRun(int cmd) {
   Serial.print("recv cmd: ");
   Serial.println(cmd);
@@ -83,19 +93,51 @@ void changeSpeedLevel(int level) {
   }
 
 }
+
+
+void onTimer() {
+  int distance = getDistance();
+  if (distance <= 30) {
+    motorRun(STOP);
+    Serial.print("distance is dangerous: ");
+    Serial.println(distance);
+    if (bluetoothSerial.available()) {
+      bluetoothSerial.print("distance is dangerous: ");
+      bluetoothSerial.println(distance);
+    }
+    changeSpeedLevel(LOWSPEED);
+    motorRun(STOP);
+  } else if (distance >= 100) {
+    if (bluetoothSerial.available()) {
+      bluetoothSerial.print("distance is fine,speed up: ");
+      bluetoothSerial.println(distance);
+    }
+    motorRun(motorAction);
+    changeSpeedLevel(HIGHSPEED);
+  } else {
+    if (bluetoothSerial.available()) {
+      bluetoothSerial.print("distance is just ok: ");
+      bluetoothSerial.println(distance);
+    }
+    motorRun(motorAction);
+  }
+
+
+}
+
+
 void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200);
   bluetoothSerial.begin(115200);
   bluetoothSerial.print("AT");
-  Serial.println("AT");
   delay(1000);
-  bluetoothSerial.print("AT+VERSION");
+  bluetoothSerial.println("AT+VERSION");
   delay(1000);
-  bluetoothSerial.print("AT+BAUD8");
+  bluetoothSerial.println("AT+BAUD8");
   delay(1000);
-  bluetoothSerial.print("AT+NAMEarduino_car");
+  bluetoothSerial.println("AT+NAMEarduino_car");
   delay(1000);
   // set pin mode for motor
   pinMode(leftMotorPin1, OUTPUT);
@@ -108,6 +150,10 @@ void setup()
   pinMode(ultrasonicInputPin, INPUT);
   pinMode(ultrasonicOutputPin, OUTPUT);
   changeSpeedLevel(motorSpeedLevel);
+
+  MsTimer2::set(500, onTimer);
+  MsTimer2::start();
+
   Serial.println("setup has been down.");
 }
 void motorCtrl(int cmd) {
@@ -140,8 +186,8 @@ int getDistance () {
   return distance;
 }
 void bluetooth() {
-  
- if (bluetoothSerial.available()) {
+
+  if (bluetoothSerial.available()) {
     int bluetoothCmd = (int)bluetoothSerial.read();
     Serial.print("bluttooth Command: ");
     Serial.println(bluetoothCmd);
@@ -154,5 +200,5 @@ void bluetooth() {
   }
 }
 void loop() {
-     bluetooth();
+  bluetooth();
 }
