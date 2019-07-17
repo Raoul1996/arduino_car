@@ -1,14 +1,5 @@
 #include <SoftwareSerial.h>
-
-//#include <TaskScheduler.h>
-
-#include <MsTimer2.h>
-
-SoftwareSerial bluetoothSerial(11, 12); // RX, TX
-
-// Scheduler runner;
-
-// define motor action,
+#include <TaskScheduler.h>
 
 #define STOP 0
 #define FORWARD 1
@@ -26,6 +17,18 @@ SoftwareSerial bluetoothSerial(11, 12); // RX, TX
 
 #define LOWSPEED 0
 #define HIGHSPEED 1
+
+SoftwareSerial bluetoothSerial(11, 12); // RX, TX
+
+ Scheduler runner;
+
+ void ultrasonicTaskCallback();
+ void bluetoothTaskCallback();
+
+Task bluetoothTask(150,TASK_FOREVER,&bluetoothTaskCallback, &runner, true);
+Task ultrasonicTask(500,TASK_FOREVER,&ultrasonicTaskCallback, &runner,true);
+
+
 // declare motor driver module ctrl pin:
 int leftMotorPin1 = 16;
 int leftMotorPin2 = 17;
@@ -60,10 +63,6 @@ int ctrlMatrix[5][4] = {
 };
 
 
-
-
-
-
 void motorRun(int cmd) {
   Serial.print("recv cmd: ");
   Serial.println(cmd);
@@ -93,9 +92,21 @@ void changeSpeedLevel(int level) {
   }
 
 }
+void bluetoothTaskCallback() {
+  if (bluetoothSerial.available()) {
+    int bluetoothCmd = (int)bluetoothSerial.read();
+    Serial.print("bluttooth Command: ");
+    Serial.println(bluetoothCmd);
+    motorCtrl(bluetoothCmd);
+  }
+  if (Serial.available()) {
+    Serial.print("Serial available: ");
+    Serial.println(Serial.read());
+    bluetoothSerial.write(Serial.read());
+  }
+}
 
-
-void onTimer() {
+void ultrasonicTaskCallback() {
   int distance = getDistance();
   if (distance <= 30) {
     motorRun(STOP);
@@ -122,16 +133,14 @@ void onTimer() {
     motorRun(motorAction);
   }
 
-
 }
-
 
 void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200);
   bluetoothSerial.begin(115200);
-  bluetoothSerial.print("AT");
+   bluetoothSerial.print("AT");
   delay(1000);
   bluetoothSerial.println("AT+VERSION");
   delay(1000);
@@ -150,10 +159,7 @@ void setup()
   pinMode(ultrasonicInputPin, INPUT);
   pinMode(ultrasonicOutputPin, OUTPUT);
   changeSpeedLevel(motorSpeedLevel);
-
-  MsTimer2::set(500, onTimer);
-  MsTimer2::start();
-
+  runner.startNow();
   Serial.println("setup has been down.");
 }
 void motorCtrl(int cmd) {
@@ -183,22 +189,9 @@ int getDistance () {
 
   int distance = pulseIn(ultrasonicInputPin, HIGH);
   distance = distance / 58;
-  return distance;
+  return distance > 0 ? distance: 0;
 }
-void bluetooth() {
 
-  if (bluetoothSerial.available()) {
-    int bluetoothCmd = (int)bluetoothSerial.read();
-    Serial.print("bluttooth Command: ");
-    Serial.println(bluetoothCmd);
-    motorCtrl(bluetoothCmd);
-  }
-  if (Serial.available()) {
-    Serial.print("Serial available: ");
-    Serial.println(Serial.read());
-    bluetoothSerial.write(Serial.read());
-  }
-}
 void loop() {
-  bluetooth();
+  runner.execute();
 }
