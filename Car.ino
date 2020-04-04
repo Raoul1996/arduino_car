@@ -30,16 +30,16 @@ Task ultrasonicTask(500,TASK_FOREVER,&ultrasonicTaskCallback, &runner,true);
 
 
 // declare motor driver module ctrl pin:
-int leftMotorPin1 = 16;
-int leftMotorPin2 = 17;
-int rightMotorPin1 = 18;
-int rightMotorPin2 = 19;
+int leftMotorPin1 = 7;
+int leftMotorPin2 = 6;
+int rightMotorPin1 = 5;
+int rightMotorPin2 = 4;
 
-int leftPWM = 9;
-int rightPWM = 10;
+int leftPWM = 10;
+int rightPWM = 9;
 
-int ultrasonicInputPin = 7;
-int ultrasonicOutputPin = 8;
+int ultrasonicInputPin = 3;
+int ultrasonicOutputPin = 2;
 
 int motorAction = STOP;
 int motorVoltage = MINVOLTAGE;
@@ -138,13 +138,13 @@ void ultrasonicTaskCallback() {
 void setup()
 {
   // put your setup code here, to run once:
-  Serial.begin(115200);
-  bluetoothSerial.begin(115200);
+  Serial.begin(57600);
+  bluetoothSerial.begin(57600);
    bluetoothSerial.print("AT");
   delay(1000);
   bluetoothSerial.println("AT+VERSION");
   delay(1000);
-  bluetoothSerial.println("AT+BAUD8");
+  bluetoothSerial.println("AT+BAUD7");
   delay(1000);
   bluetoothSerial.println("AT+NAMEarduino_car");
   delay(1000);
